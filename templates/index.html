@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Chest X-ray Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Upload Chest X-ray for AI Analysis</h1>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        <form method="post" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".dcm,.png,.jpg,.jpeg" required>
+            <button type="submit">Upload & Analyze</button>
+        </form>
+        <p class="note">Supported formats: DICOM (.dcm), PNG (.png), JPG (.jpg,.jpeg)</p>
+        <p class="note">Max file size: 50MB</p>
+    </div>
+</body>
+</html>

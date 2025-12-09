@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X-ray Analysis Results</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Analysis Results</h1>
+
+        <div class="result-section">
+            <h2>Original Processed Image</h2>
+            <img src="{{ url_for('result_file', filename=original_image) }}" alt="Processed X-ray" class="result-image">
+        </div>
+
+        <div class="result-section">
+            <h2>Predicted Conditions & Confidence</h2>
+            {% if predictions %}
+                <ul>
+                {% for prediction in predictions %}
+                    <li>
+                        <strong>{{ prediction }}</strong>: Confidence - {{ confidence_scores[prediction] }}
+                    </li>
+                {% endfor %}
+                </ul>
+            {% else %}
+                <p>No specific conditions detected with high confidence.</p>
+            {% endif %}
+        </div>
+
+        <div class="result-section">
+            <h2>Explainable AI: Grad-CAM Heatmaps</h2>
+            <p>Heatmaps highlight the regions in the X-ray image that most influenced the model's prediction for each detected condition.</p>
+            {% if heatmaps %}
+                <div class="heatmap-grid">
+                    {% for heatmap_filename in heatmaps %}
+                        <div class="heatmap-item">
+                            <img src="{{ url_for('result_file', filename=heatmap_filename) }}" alt="Heatmap for {{ heatmap_filename.split('_')[1] }}" class="heatmap-image">
+                            <p><strong>{{ heatmap_filename.split('_')[1] }}</strong></p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No heatmaps generated (no significant findings or an issue occurred).</p>
+            {% endif %}
+        </div>
+
+        <div class="result-section">
+            <h2>Detailed AI Report</h2>
+            <p>A comprehensive AI-generated report summarizing the findings and explanations.</p>
+            {% if report_filename %}
+                <a href="{{ url_for('download_report', filename=report_filename) }}" download="{{ report_filename }}" class="download-button">Download Full Report (.txt)</a>
+            {% else %}
+                <p>Report not available.</p>
+            {% endif %}
+        </div>
+
+        <p><a href="{{ url_for('index') }}" class="back-link">Upload another image</a></p>
+    </div>
+</body>
+</html>

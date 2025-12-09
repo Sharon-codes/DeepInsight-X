@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+
+# Project specific
+models/
+reports/
+evaluation_reports/
+validation_reports/
+runs/
+data/raw/
+data/processed/images/
+static/uploads/
+static/results/
+*.log
+app.log
