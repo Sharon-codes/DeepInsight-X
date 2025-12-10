@@ -59,8 +59,9 @@ class MultiLabelResNet(nn.Module):
                 # ConvNeXT has a different structure
                 in_features = self.base_model.classifier[2].in_features  # The final linear layer
                 self.base_model.classifier = nn.Sequential(
-                    nn.LayerNorm(in_features, eps=1e-6),
-                    nn.Flatten(start_dim=1),
+                    nn.AdaptiveAvgPool2d(1),  # Pool spatial dimensions to [batch, 1536, 1, 1]
+                    nn.Flatten(start_dim=1),   # Flatten to [batch, 1536]
+                    nn.LayerNorm(in_features, eps=1e-6),  # Now can apply LayerNorm
                     nn.Dropout(p=0.5),
                     nn.Linear(in_features, num_classes)
                 )
