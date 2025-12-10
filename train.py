@@ -180,46 +180,58 @@ def load_and_prepare_data(args):
     
     # Load NIH ChestX-ray14 from HuggingFace
     nih_df = None
-    try:
-        print("Loading NIH ChestX-ray14 dataset from HuggingFace...")
-        # NIH dataset has configs: 'image-classification' for multi-label classification
-        nih_dataset = load_dataset('alkzar90/NIH-Chest-X-ray-dataset', 
-                                   name='image-classification',  # Use image-classification config
-                                   split='train', 
-                                   trust_remote_code=True)
-        print(f"NIH dataset loaded: {len(nih_dataset)} samples")
-        
-        # Convert to DataFrame
-        nih_data = []
-        print(f"Processing {len(nih_dataset)} NIH samples (this may take a while)...")
-        os.makedirs("data/processed/images", exist_ok=True)
-        
-        for idx, sample in enumerate(tqdm(nih_dataset, desc="Processing NIH images")):
-            # Save image
-            img_path = f"data/processed/images/nih_{idx:06d}.png"
-            sample['image'].save(img_path)
+    nih_metadata_cache = "data/processed/nih_full_metadata.csv"
+    
+    # Check if we already have processed NIH data
+    if os.path.exists(nih_metadata_cache):
+        print(f"✓ Found cached NIH metadata at {nih_metadata_cache}")
+        print("  Loading from cache (skipping image processing)...")
+        nih_df = pd.read_csv(nih_metadata_cache)
+        print(f"✓ Loaded {len(nih_df)} NIH samples from cache")
+    else:
+        # Process NIH dataset from HuggingFace
+        try:
+            print("Loading NIH ChestX-ray14 dataset from HuggingFace...")
+            # NIH dataset has configs: 'image-classification' for multi-label classification
+            nih_dataset = load_dataset('alkzar90/NIH-Chest-X-ray-dataset', 
+                                       name='image-classification',  # Use image-classification config
+                                       split='train', 
+                                       trust_remote_code=True)
+            print(f"NIH dataset loaded: {len(nih_dataset)} samples")
             
-            # Get labels
-            finding_labels = sample.get('Finding Labels', '')
-            labels = ' '.join(['1' if pathology in finding_labels else '0' for pathology in TARGET_PATHOLOGIES])
+            # Convert to DataFrame
+            nih_data = []
+            print(f"Processing {len(nih_dataset)} NIH samples (this may take a while)...")
+            os.makedirs("data/processed/images", exist_ok=True)
             
-            nih_data.append({
-                'Image Index': f"nih_{idx:06d}.png",
-                'Dataset': 'NIH ChestX-ray14',
-                'Split': 'train',
-                'Processed Image Path': img_path,
-                'Finding Labels': finding_labels,
-                'Harmonized Labels': labels
-            })
+            for idx, sample in enumerate(tqdm(nih_dataset, desc="Processing NIH images")):
+                # Save image
+                img_path = f"data/processed/images/nih_{idx:06d}.png"
+                sample['image'].save(img_path)
+                
+                # Get labels
+                finding_labels = sample.get('Finding Labels', '')
+                labels = ' '.join(['1' if pathology in finding_labels else '0' for pathology in TARGET_PATHOLOGIES])
+                
+                nih_data.append({
+                    'Image Index': f"nih_{idx:06d}.png",
+                    'Dataset': 'NIH ChestX-ray14',
+                    'Split': 'train',
+                    'Processed Image Path': img_path,
+                    'Finding Labels': finding_labels,
+                    'Harmonized Labels': labels
+                })
+                
+                # Log progress every 5000 samples
+                if (idx + 1) % 5000 == 0:
+                    print(f"  → Processed {idx + 1}/{len(nih_dataset)} samples ({(idx + 1) / len(nih_dataset) * 100:.1f}%)")
             
-            # Log progress every 5000 samples
-            if (idx + 1) % 5000 == 0:
-                print(f"  → Processed {idx + 1}/{len(nih_dataset)} samples ({(idx + 1) / len(nih_dataset) * 100:.1f}%)")
-        
-        nih_df = pd.DataFrame(nih_data)
-        print(f"Processed {len(nih_df)} NIH samples")
-    except Exception as e:
-        print(f"Error loading NIH dataset: {e}. Continuing without it.")
+            nih_df = pd.DataFrame(nih_data)
+            # Save the full metadata for future use
+            nih_df.to_csv(nih_metadata_cache, index=False)
+            print(f"✓ Processed {len(nih_df)} NIH samples and cached metadata")
+        except Exception as e:
+            print(f"Error loading NIH dataset: {e}. Continuing without it.")
     
     # Load ReXGradient-160K text reports
     rex_df = None
