@@ -395,13 +395,15 @@ def calculate_class_weights(train_loader, num_classes):
         torch.Tensor: Class weights
     """
     print("Calculating class weights...")
+    print(f"  Iterating through {len(train_loader)} batches to collect labels...")
     
     # Collect all labels
     all_labels = []
-    for _, labels in train_loader:
+    for batch_idx, (_, labels) in enumerate(tqdm(train_loader, desc="Collecting labels")):
         all_labels.append(labels.numpy())
     
     all_labels = np.concatenate(all_labels, axis=0)
+    print(f"✓ Collected labels from {len(all_labels)} samples")
     
     # Calculate class weights
     class_counts = np.sum(all_labels, axis=0)
