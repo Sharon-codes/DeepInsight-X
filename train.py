@@ -638,8 +638,8 @@ def main():
     parser = argparse.ArgumentParser(description="Train Chest X-ray Classification Model")
     
     # Model parameters
-    parser.add_argument("--backbone", type=str, default="resnext101_32x8d",
-                       choices=["resnet101", "resnext101_32x8d", "efficientnet_b4"],
+    parser.add_argument("--backbone", type=str, default="convnext_large",
+                       choices=["resnet101", "resnext101_32x8d", "efficientnet_b4", "convnext_large"],
                        help="CNN backbone architecture")
     parser.add_argument("--num_classes", type=int, default=14,
                        help="Number of pathology classes")
