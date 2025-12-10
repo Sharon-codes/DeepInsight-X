@@ -47,7 +47,7 @@ class ChestXrayDataset(Dataset):
         return len(self.metadata_df)
 
     def __getitem__(self, idx):
-        img_path = self.metadata_df.iloc[idx]['Image Path']
+        img_path = self.metadata_df.iloc[idx]['Processed Image Path']
         full_img_path = os.path.join(self.image_dir, os.path.basename(img_path)) # Use basename as image_dir is already processed
         
         # Load image using OpenCV for Albumentations compatibility
