@@ -51,8 +51,21 @@ class ChestXrayDataset(Dataset):
         full_img_path = os.path.join(self.image_dir, os.path.basename(img_path)) # Use basename as image_dir is already processed
         
         # Load image using OpenCV for Albumentations compatibility
-        image = cv2.imread(full_img_path)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert BGR to RGB
+        try:
+            image = cv2.imread(full_img_path)
+            
+            # Check if image loaded successfully
+            if image is None or image.size == 0:
+                raise ValueError(f"Failed to load image: {full_img_path}")
+                
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB) # Convert BGR to RGB
+            
+        except Exception as e:
+            # If image is corrupted or missing, create a black placeholder
+            print(f"Warning: Error loading image {full_img_path}: {e}. Using black placeholder.")
+            # Create a black image of the expected size
+            from utils.preprocessing import TARGET_IMAGE_SIZE
+            image = np.zeros((TARGET_IMAGE_SIZE[0], TARGET_IMAGE_SIZE[1], 3), dtype=np.uint8)
         
         # Get multi-hot encoded labels
         label = torch.tensor(self.labels[idx], dtype=torch.float32)
