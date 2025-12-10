@@ -191,9 +191,11 @@ def load_and_prepare_data(args):
         
         # Convert to DataFrame
         nih_data = []
-        for idx, sample in enumerate(nih_dataset):
-            #Save image
-            os.makedirs("data/processed/images", exist_ok=True)
+        print(f"Processing {len(nih_dataset)} NIH samples (this may take a while)...")
+        os.makedirs("data/processed/images", exist_ok=True)
+        
+        for idx, sample in enumerate(tqdm(nih_dataset, desc="Processing NIH images")):
+            # Save image
             img_path = f"data/processed/images/nih_{idx:06d}.png"
             sample['image'].save(img_path)
             
@@ -209,6 +211,10 @@ def load_and_prepare_data(args):
                 'Finding Labels': finding_labels,
                 'Harmonized Labels': labels
             })
+            
+            # Log progress every 5000 samples
+            if (idx + 1) % 5000 == 0:
+                print(f"  → Processed {idx + 1}/{len(nih_dataset)} samples ({(idx + 1) / len(nih_dataset) * 100:.1f}%)")
         
         nih_df = pd.DataFrame(nih_data)
         print(f"Processed {len(nih_df)} NIH samples")
@@ -294,11 +300,14 @@ def load_and_prepare_data(args):
     print(f"Test samples: {len(test_df)}")
     
     # Save splits
+    print("Saving metadata splits to CSV files...")
     train_df.to_csv("data/processed/train_metadata.csv", index=False)
     val_df.to_csv("data/processed/val_metadata.csv", index=False)
     test_df.to_csv("data/processed/test_metadata.csv", index=False)
+    print("✓ Metadata CSV files saved successfully")
     
     # Create datasets
+    print("Creating PyTorch datasets...")
     image_dir = "data/processed/images"
     
     # Check if we're using synthetic data
@@ -336,6 +345,7 @@ def load_and_prepare_data(args):
         )
     
     # Create data loaders
+    print("Creating data loaders...")
     train_loader = DataLoader(
         train_dataset, 
         batch_size=args.batch_size, 
@@ -357,6 +367,7 @@ def load_and_prepare_data(args):
         num_workers=args.num_workers,
         pin_memory=True
     )
+    print(f"✓ Data loaders created (batch_size={args.batch_size}, num_workers={args.num_workers})")
     
     return train_loader, val_loader, test_loader, len(TARGET_PATHOLOGIES)
 
