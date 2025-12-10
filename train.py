@@ -187,7 +187,23 @@ def load_and_prepare_data(args):
         print(f"✓ Found cached NIH metadata at {nih_metadata_cache}")
         print("  Loading from cache (skipping image processing)...")
         nih_df = pd.read_csv(nih_metadata_cache)
-        print(f"✓ Loaded {len(nih_df)} NIH samples from cache")
+        
+        # Validate cache: Check if we have any positive labels
+        # The 'Harmonized Labels' column contains strings like "0 0 1 0..."
+        # If all rows are "0 0 0...", then the cache is invalid.
+        has_findings = False
+        for labels in nih_df['Harmonized Labels'].head(1000):
+            if '1' in str(labels):
+                has_findings = True
+                break
+        
+        if not has_findings and len(nih_df) > 0:
+            print("⚠️ DETECTED INVALID CACHE: All checked labels are zero (no findings).")
+            print("  Deleting corrupted cache and forcing re-processing...")
+            os.remove(nih_metadata_cache)
+            nih_df = None # Force re-processing
+        else:
+            print(f"✓ Loaded {len(nih_df)} NIH samples from cache")
     else:
         # Process NIH dataset from HuggingFace
         try:
@@ -209,9 +225,43 @@ def load_and_prepare_data(args):
                 img_path = f"data/processed/images/nih_{idx:06d}.png"
                 sample['image'].save(img_path)
                 
-                # Get labels
-                finding_labels = sample.get('Finding Labels', '')
-                labels = ' '.join(['1' if pathology in finding_labels else '0' for pathology in TARGET_PATHOLOGIES])
+                # Inspect first sample to find label key
+                if idx == 0:
+                    print(f"Sample keys: {sample.keys()}")
+                
+                # Get labels - handle different formats
+                finding_labels = ""
+                labels_vec = ['0'] * len(TARGET_PATHOLOGIES)
+                
+                if 'labels' in sample:
+                    # HuggingFace image-classification format (list of integers)
+                    label_indices = sample['labels']
+                    # Get class names from dataset features if available
+                    if hasattr(nih_dataset.features['labels'], 'names'):
+                        class_names = nih_dataset.features['labels'].names
+                        finding_labels_list = [class_names[i] for i in label_indices]
+                        finding_labels = '|'.join(finding_labels_list)
+                        
+                        # Map to our TARGET_PATHOLOGIES
+                        for i, pathology in enumerate(TARGET_PATHOLOGIES):
+                            # Handle potential spelling differences (e.g. "Pleural Thickening" vs "Pleural_Thickening")
+                            pathology_clean = pathology.replace('_', ' ')
+                            for lbl in finding_labels_list:
+                                if pathology_clean.lower() == lbl.lower() or pathology.lower() == lbl.lower():
+                                    labels_vec[i] = '1'
+                    else:
+                        # Fallback if names not available (unlikely for this dataset)
+                        finding_labels = str(label_indices)
+                        
+                elif 'Finding Labels' in sample:
+                    # Original CSV format
+                    finding_labels = sample['Finding Labels']
+                    for i, pathology in enumerate(TARGET_PATHOLOGIES):
+                        pathology_clean = pathology.replace('_', ' ')
+                        if pathology in finding_labels or pathology_clean in finding_labels:
+                            labels_vec[i] = '1'
+                
+                labels = ' '.join(labels_vec)
                 
                 nih_data.append({
                     'Image Index': f"nih_{idx:06d}.png",
