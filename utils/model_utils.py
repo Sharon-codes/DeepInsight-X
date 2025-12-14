@@ -6,7 +6,11 @@ import torch.optim as optim
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import GradScaler, autocast # For mixed precision training
-from torch.utils.tensorboard import SummaryWriter # For logging [19]
+try:
+    from torch.utils.tensorboard import SummaryWriter # For logging [19]
+except ImportError:
+    SummaryWriter = None
+from sklearn.metrics import roc_auc_score # For calculating AUROC [19]
 from torchmetrics.classification import MultilabelAccuracy, MultilabelPrecision, MultilabelRecall, MultilabelF1Score, MultilabelAUROC # For advanced metrics
 from tqdm import tqdm
 import argparse
@@ -56,15 +60,10 @@ class MultiLabelResNet(nn.Module):
         elif hasattr(self.base_model, 'classifier'):  # EfficientNet/ConvNeXT
             # For ConvNeXT, we need to handle the classifier differently
             if backbone == 'convnext_large':
-                # ConvNeXT has a different structure
-                in_features = self.base_model.classifier[2].in_features  # The final linear layer
-                self.base_model.classifier = nn.Sequential(
-                    nn.AdaptiveAvgPool2d(1),  # Pool spatial dimensions to [batch, 1536, 1, 1]
-                    nn.Flatten(start_dim=1),   # Flatten to [batch, 1536]
-                    nn.LayerNorm(in_features, eps=1e-6),  # Now can apply LayerNorm
-                    nn.Dropout(p=0.5),
-                    nn.Linear(in_features, num_classes)
-                )
+                # ConvNeXT has a different structure: Norm -> Flatten -> Linear
+                # We only want to replace the final Linear layer (index 2) to match the trained checkpoint
+                in_features = self.base_model.classifier[2].in_features
+                self.base_model.classifier[2] = nn.Linear(in_features, num_classes)
             else:
                 # For EfficientNet
                 in_features = self.base_model.classifier[-1].in_features

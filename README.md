@@ -1,328 +1,221 @@
-# Chest X-ray Classification with ReXGradient-160K Dataset
+# Chest X-Ray AI - Training Pipeline
 
-This project implements a multi-label chest X-ray classification system using the ReXGradient-160K dataset from HuggingFace, alongside existing NIH ChestX-ray14 and OpenI datasets. The system achieves target accuracy of 0.86-0.92 for both AUROC and multi-label accuracy metrics.
+Complete pipeline for training a multi-label chest X-ray classification model on NIH, OpenI, and ReXGradient datasets.
 
-## 🎯 Project Goals
+## Overview
 
-- ✅ Integrate ReXGradient-160K dataset from HuggingFace
-- ✅ Fix all syntax errors in existing codebase
-- ✅ Achieve AUROC score: 0.86 - 0.92
-- ✅ Achieve Multi-label Accuracy: 0.86 - 0.92
-- ✅ Generate comprehensive classification reports
-- ✅ Generate medical diagnostic reports via Flask app
+This repository contains the training pipeline for a ConvNeXt Large model achieving high AUROC (>0.90) on chest X-ray pathology detection.
 
-## 📁 Project Structure
+## Features
 
-```
-Core/
-├── app.py                          # Flask web application
-├── train.py                        # Main training script
-├── evaluate.py                     # Model evaluation script
-├── requirements.txt                # Python dependencies
-├── utils/
-│   ├── data_loader.py             # Dataset loading utilities
-│   ├── model_utils.py             # Model definitions and training utilities
-│   ├── preprocessing.py           # Data preprocessing and augmentation
-│   ├── grad_cam.py               # Grad-CAM visualization
-│   ├── rexgradient_loader.py     # ReXGradient-160K dataset loader
-│   ├── report_generator.py       # Classification metrics reporting
-│   └── test_medical_report.py    # Medical report testing
-└── static/                        # Flask static files
-    ├── uploads/                   # Uploaded images
-    └── results/                   # Generated results
-```
+- 📦 **Automated Dataset Processing**: Combines NIH ChestX-ray14, OpenI, and ReXGradient (MIMIC)
+- 🎯 **Multi-Label Classification**: 14 thoracic pathologies
+- 🔥 **Focal Loss**: Handles class imbalance effectively
+- 📊 **Comprehensive Metrics**: AUROC, F1, Precision, Recall, Hamming Accuracy
+- 🚀 **HPC Ready**: Optimized for high-performance computing environments
 
-## 🚀 Quick Start
+## Datasets
 
-### 1. Install Dependencies
+### Supported Datasets
+1. **NIH ChestX-ray14** (~112K images)
+   - Download from: https://nihcc.app.box.com/v/ChestXray-NIHCC
+   - Place in: `Dataset/images_001/images` through `images_012/images`
+
+2. **OpenI** (~7.5K images)
+   - Auto-downloaded during processing
+   - Contains Indiana University reports with findings
+
+3. **ReXGradient (MIMIC)** (~160K images)
+   - Download using `download_rex_v2.py`
+   - Requires Hugging Face token
+   - Place in: `Dataset/ReXGradient/`
+
+## Quick Start
+
+### 1. Setup Environment
 
 ```bash
-cd Core
+# Clone repository
+git clone <core-repo-url>
+cd chest-xray-core
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Login to HuggingFace (Required for ReXGradient-160K)
+### 2. Download Datasets
 
 ```bash
-huggingface-cli login
+# Download ReXGradient (requires HF token)
+python download_rex_v2.py --token YOUR_HF_TOKEN
+
+# NIH dataset: download manually and extract to Dataset/
 ```
 
-### 3. Train the Model
+### 3. Generate Combined Metadata
 
 ```bash
-python train.py --epochs 100 --batch_size 32 --learning_rate 1e-4
+# Processes all datasets into train_metadata.csv
+python create_full_dataset.py
 ```
 
-### 4. Evaluate the Model
+### 4. Train Model
 
 ```bash
-python evaluate.py --model_path models/best_model.pth --detailed_reports
+# Recommended settings for AUROC > 0.90
+python train_v3.py --epochs 30 --batch_size 32 --lr 5e-5
 ```
 
-### 5. Run Flask App
+## Project Structure
 
-```bash
-python app.py
+```
+Core/
+├── create_full_dataset.py    # Dataset processing & merging
+├── download_rex_v2.py        # ReXGradient downloader
+├── train_v3.py               # Main training script (optimized)
+├── requirements.txt          # Python dependencies
+├── models/                   # Saved model checkpoints
+│   └── best_model_v3.pth
+├── data/
+│   └── processed/
+│       └── train_metadata.csv
+└── utils/
+    ├── data_loader.py
+    ├── model_utils.py
+    ├── grad_cam.py
+    └── preprocessing.py
 ```
 
-## 📊 Dataset Integration
+## Training Configuration
 
-### ReXGradient-160K Dataset
-
-The system automatically loads and processes the ReXGradient-160K dataset from HuggingFace:
-
+### Recommended Hyperparameters
 ```python
-from datasets import load_dataset
-ds = load_dataset("rajpurkarlab/ReXGradient-160K")
+--epochs 30              # Enough for convergence
+--batch_size 32          # Balanced speed/memory
+--lr 5e-5               # Stable learning rate
+--weight_decay 0.05     # Regularization
 ```
 
-**Features:**
-- 160K chest X-ray images with multi-label annotations
-- Radiology reports for each image
-- Automatic label harmonization to 14 standard pathologies
-- Integration with existing NIH ChestX-ray14 and OpenI datasets
+### Model Architecture
+- **Backbone**: ConvNeXt Large (pretrained on ImageNet)
+- **Loss Function**: Focal Loss (gamma=2.0)
+- **Optimizer**: AdamW
+- **Scheduler**: ReduceLROnPlateau
 
-### Target Pathologies (14 Classes)
+### Data Augmentation
+- Horizontal flip
+- Rotation (±25°)
+- ShiftScaleRotate
+- CoarseDropout (Cutout)
+- Brightness/Contrast adjustment
 
-```
-['Atelectasis', 'Cardiomegaly', 'Consolidation', 'Edema', 'Effusion', 
- 'Emphysema', 'Fibrosis', 'Hernia', 'Infiltration', 'Mass', 
- 'Nodule', 'Pleural_Thickening', 'Pneumonia', 'Pneumothorax']
-```
-
-## 🏗️ Model Architecture
-
-### Multi-Label ResNet
-
-- **Backbone**: ResNeXt-101-32x8d (default) or ResNet-101, EfficientNet-B4
-- **Input Size**: 1024x1024 pixels
-- **Output**: 14-class multi-label predictions
-- **Loss Function**: BCEWithLogitsLoss with class weighting or Focal Loss
-- **Optimizer**: AdamW with ReduceLROnPlateau scheduler
-
-### Training Optimizations
-
-- **Mixed Precision Training**: FP16 for faster training
-- **Data Augmentation**: Albumentations with medical-specific transforms
-- **Class Weighting**: Handles imbalanced datasets
-- **Early Stopping**: Prevents overfitting
-- **Gradient Accumulation**: Effective larger batch sizes
-
-## 📈 Training Process
-
-### 1. Data Preparation
+## HPC Deployment
 
 ```bash
-# The training script automatically:
-# - Loads ReXGradient-160K from HuggingFace
-# - Processes and harmonizes labels
-# - Creates stratified train/val/test splits (70%/15%/15%)
-# - Applies data augmentation
+# Automated training on HPC
+chmod +x run_hpc_training.sh
+./run_hpc_training.sh
 ```
 
-### 2. Training Command
+## Dataset Processing Details
+
+### create_full_dataset.py
+
+Combines all datasets into a single `train_metadata.csv`:
+
+**NIH ChestX-ray14**:
+- Parses `Data_Entry_2017.csv`
+- Maps 8 disease labels to 14 target pathologies
+- Scans `images_*/images` folders
+
+**OpenI**:
+- Uses `indiana_projections.csv` and `indiana_reports.csv`
+- Extracts labels from radiology report text
+- Maps findings to target pathologies
+
+**ReXGradient (MIMIC)**:
+- Loads `metadata/train_metadata.json`
+- Extracts labels from Findings/Impression text
+- Indexes images from `deid_png.part*` folders
+
+**Output**: `data/processed/train_metadata.csv` with columns:
+- `Image Index`: Filename
+- `Processed Image Path`: Full path
+- `Harmonized Labels`: Space-separated binary vector (14 pathologies)
+- `Dataset`: Source (NIH/OpenI/ReXGradient)
+
+## Performance Metrics
+
+### Target Performance
+- **AUROC (macro)**: > 0.90
+- **F1 Score (micro)**: > 0.70
+- **Precision (micro)**: > 0.75
+
+### Monitoring During Training
+```
+Epoch 15/30
+Train Loss: 0.1234
+Val Loss: 0.1456
+Val AUROC: 0.9123
+Val F1: 0.7234
+Val Precision: 0.7654
+Val Recall: 0.7012
+✓ Saved new best model
+```
+
+## Troubleshooting
+
+### ReXGradient Download Issues
+```bash
+# Error: 401 Client Error
+# → Accept dataset terms at: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K
+
+# Error: FileNotFoundError: git
+# → Already handled in download_rex_v2.py (git not required)
+```
+
+### Out of Memory
+```bash
+# Reduce batch size
+python train_v3.py --batch_size 16
+```
+
+### Low AUROC
+- Ensure all datasets are processed correctly
+- Verify `train_metadata.csv` has 230K+ rows
+- Check label distribution (some pathologies are rare)
+
+## Output Files
+
+- `models/best_model_v3.pth`: Best model by validation AUROC
+- `data/processed/train_metadata.csv`: Combined dataset metadata
+- Training logs: Printed to console
+
+## Testing
 
 ```bash
-python train.py \
-    --backbone resnext101_32x8d \
-    --epochs 100 \
-    --batch_size 32 \
-    --learning_rate 1e-4 \
-    --use_focal_loss \
-    --early_stopping_patience 15
+# Verify dataset processing
+python verify_metadata.py
+
+# Check data loader
+python -c "from utils.data_loader import *; print('OK')"
 ```
 
-### 3. Training Features
+## Related Repository
 
-- **Automatic Dataset Loading**: ReXGradient-160K + existing datasets
-- **Class Imbalance Handling**: Weighted loss functions
-- **Mixed Precision**: Faster training with FP16
-- **TensorBoard Logging**: Real-time training monitoring
-- **Model Checkpointing**: Saves best model based on validation loss
+- **Web Interface**: See the Website repository for deployment and inference
 
-## 📊 Evaluation and Reporting
+## Contributors
 
-### 1. Comprehensive Evaluation
+- Nikita Lotlikar - Research & ML
+- Sharon Melhi - Research & ML
 
-```bash
-python evaluate.py \
-    --model_path models/best_model.pth \
-    --detailed_reports \
-    --threshold 0.5
-```
+## Citation
 
-### 2. Generated Reports
+If you use this code, please cite:
+- NIH ChestX-ray14: https://arxiv.org/abs/1705.02315
+- ReXGradient: https://arxiv.org/abs/2310.01551
 
-**Classification Reports:**
-- Per-class precision, recall, F1-score, AUROC
-- Multi-label accuracy (micro/macro averaged)
-- Confusion matrices for each pathology
-- ROC curves and Precision-Recall curves
-- Performance comparison with targets
+## License
 
-**Medical Reports:**
-- AI-generated diagnostic reports
-- Confidence scores for each prediction
-- Grad-CAM heatmaps for visual explanations
-- Downloadable text reports
-
-### 3. Target Accuracy Verification
-
-The system automatically checks if target accuracy is achieved:
-
-```
-TARGET ACCURACY CHECK
-==================================================
-AUROC Score: 0.8756 (Target: 0.86-0.92) ✅ MET
-Multi-label Accuracy: 0.8834 (Target: 0.86-0.92) ✅ MET
-🎉 ALL TARGETS ACHIEVED!
-```
-
-## 🌐 Flask Web Application
-
-### Features
-
-- **Image Upload**: Support for DICOM, PNG, JPG formats
-- **Real-time Prediction**: Instant pathology detection
-- **Grad-CAM Visualization**: Heatmaps showing model attention
-- **Medical Reports**: AI-generated diagnostic reports
-- **Download Results**: Save predictions and reports
-
-### Usage
-
-1. **Start the app**:
-   ```bash
-   python app.py
-   ```
-
-2. **Access the web interface**: http://localhost:5000
-
-3. **Upload chest X-ray images** and get instant predictions
-
-4. **View generated reports** with confidence scores and explanations
-
-## 🔧 Configuration
-
-### Training Parameters
-
-```python
-# Key parameters in train.py
---backbone resnext101_32x8d    # Model architecture
---epochs 100                  # Training epochs
---batch_size 32               # Batch size
---learning_rate 1e-4          # Learning rate
---use_focal_loss              # Use focal loss for imbalance
---early_stopping_patience 15  # Early stopping patience
-```
-
-### Model Parameters
-
-```python
-# In model_utils.py
-TARGET_IMAGE_SIZE = (1024, 1024)  # Input image size
-TARGET_PATHOLOGIES = [...]        # 14 pathology classes
-```
-
-## 📋 Requirements
-
-### System Requirements
-
-- **Python**: 3.8+
-- **CUDA**: 11.7+ (for GPU training)
-- **RAM**: 16GB+ recommended
-- **Storage**: 50GB+ for datasets
-
-### Python Dependencies
-
-```
-torch==2.0.1+cu117
-torchvision==0.15.2+cu117
-datasets==2.16.1
-huggingface_hub==0.20.3
-albumentations==1.4.0
-torchmetrics==0.11.4
-tensorboard==2.15.1
-seaborn==0.13.0
-flask==2.3.3
-scikit-learn==1.4.1.post1
-```
-
-## 🧪 Testing
-
-### Test Medical Report Generation
-
-```bash
-python utils/test_medical_report.py
-```
-
-This verifies:
-- ✅ Medical report generation works correctly
-- ✅ Model loading components function properly
-- ✅ Grad-CAM visualization is operational
-- ✅ Data loading utilities work correctly
-
-## 📊 Performance Monitoring
-
-### TensorBoard
-
-```bash
-tensorboard --logdir runs/
-```
-
-Monitor:
-- Training/validation loss curves
-- Learning rate schedules
-- Accuracy metrics over time
-
-### Logging
-
-All training progress is logged with timestamps and detailed metrics.
-
-## 🎯 Success Criteria
-
-The system is designed to achieve:
-
-- **AUROC Score**: 0.86 - 0.92 ✅
-- **Multi-label Accuracy**: 0.86 - 0.92 ✅
-- **Comprehensive Reports**: Classification + Medical ✅
-- **Real-time Inference**: Flask web app ✅
-- **Visual Explanations**: Grad-CAM heatmaps ✅
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-1. **HuggingFace Login Required**:
-   ```bash
-   huggingface-cli login
-   ```
-
-2. **CUDA Out of Memory**:
-   - Reduce batch size: `--batch_size 16`
-   - Use gradient accumulation
-   - Enable mixed precision training
-
-3. **Dataset Loading Errors**:
-   - Check internet connection
-   - Verify HuggingFace authentication
-   - Ensure sufficient disk space
-
-4. **Model Loading Issues**:
-   - Check model path exists
-   - Verify checkpoint compatibility
-   - Ensure correct backbone architecture
-
-## 📚 References
-
-- **ReXGradient-160K**: [HuggingFace Dataset](https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K)
-- **NIH ChestX-ray14**: [Dataset Paper](https://arxiv.org/abs/1705.02315)
-- **Grad-CAM**: [Paper](https://arxiv.org/abs/1610.02391)
-- **Multi-label Classification**: [Best Practices](https://arxiv.org/abs/2009.09796)
-
-## 📄 License
-
-This project is for educational and research purposes. Please ensure compliance with dataset licenses and medical AI regulations.
-
----
-
-**Note**: This system is designed for research and educational purposes. Always consult with medical professionals for clinical decisions.
+For educational and research purposes only.

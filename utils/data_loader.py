@@ -47,7 +47,15 @@ class ChestXrayDataset(Dataset):
         return len(self.metadata_df)
 
     def __getitem__(self, idx):
-        img_path = self.metadata_df.iloc[idx]['Processed Image Path']
+        # Handle different column names for image path
+        if 'Processed Image Path' in self.metadata_df.columns:
+            img_path = self.metadata_df.iloc[idx]['Processed Image Path']
+        elif 'Image Path' in self.metadata_df.columns:
+            img_path = self.metadata_df.iloc[idx]['Image Path']
+        else:
+            # Fallback to 'Image Index' if neither path column exists
+            img_path = self.metadata_df.iloc[idx]['Image Index']
+            
         full_img_path = os.path.join(self.image_dir, os.path.basename(img_path)) # Use basename as image_dir is already processed
         
         # Load image using OpenCV for Albumentations compatibility

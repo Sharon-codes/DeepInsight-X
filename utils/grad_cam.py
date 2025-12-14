@@ -60,8 +60,12 @@ class GradCAM:
         target_output.backward(torch.ones_like(target_output), retain_graph=True)
 
         # Get gradients and activations
-        gradients = self.gradients.cpu().data.numpy() # Shape: (C, H, W)
-        activations = self.activations.cpu().data.numpy() # Shape: (C, H, W)
+        if len(self.gradients.shape) == 4:
+            gradients = self.gradients.cpu().data.numpy()[0]
+            activations = self.activations.cpu().data.numpy()[0]
+        else:
+            gradients = self.gradients.cpu().data.numpy()
+            activations = self.activations.cpu().data.numpy()
 
         # Pool the gradients across spatial dimensions (average pooling) [23, 24]
         pooled_gradients = np.mean(gradients, axis=(1, 2)) # Shape: (C,)
