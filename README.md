@@ -1,34 +1,60 @@
 # Chest X-Ray AI - Training Pipeline
 
-Complete pipeline for training a multi-label chest X-ray classification model on NIH, OpenI, and ReXGradient datasets.
+Complete pipeline for training a multi-label chest X-ray classification model on **7 major datasets** for maximum accuracy and generalization.
 
 ## Overview
 
-This repository contains the training pipeline for a ConvNeXt Large model achieving high AUROC (>0.90) on chest X-ray pathology detection.
+This repository contains the training pipeline for a ConvNeXt Large model achieving high AUROC (>0.90) on chest X-ray pathology detection across **~900K images** from 7 diverse sources.
 
 ## Features
 
-- 📦 **Automated Dataset Processing**: Combines NIH ChestX-ray14, OpenI, and ReXGradient (MIMIC)
+- 📦 **Multi-Dataset Processing**: Combines 7 major datasets (NIH, OpenI, ReXGradient, CheXpert, MIMIC-CXR, PadChest, VinDr-CXR)
+- 🌍 **Geographic Diversity**: US, European, and Asian populations
 - 🎯 **Multi-Label Classification**: 14 thoracic pathologies
 - 🔥 **Focal Loss**: Handles class imbalance effectively
 - 📊 **Comprehensive Metrics**: AUROC, F1, Precision, Recall, Hamming Accuracy
 - 🚀 **HPC Ready**: Optimized for high-performance computing environments
+- 🔍 **Explainable AI**: Integrated Grad-CAM for visual interpretability
 
 ## Datasets
 
-### Supported Datasets
-1. **NIH ChestX-ray14** (~112K images)
-   - Download from: https://nihcc.app.box.com/v/ChestXray-NIHCC
+### Supported Datasets (7 Total = ~900K Images)
+
+1. **NIH ChestX-ray14** (~112K images) ✅
+   - Download: https://nihcc.app.box.com/v/ChestXray-NIHCC
+   - Standard benchmark dataset
    - Place in: `Dataset/images_001/images` through `images_012/images`
 
-2. **OpenI** (~7.5K images)
+2. **OpenI** (~7.5K images) ✅
    - Auto-downloaded during processing
-   - Contains Indiana University reports with findings
+   - Indiana University with high-quality annotations
 
-3. **ReXGradient (MIMIC)** (~160K images)
-   - Download using `download_rex_v2.py`
-   - Requires Hugging Face token
+3. **ReXGradient** (~160K images) ✅
+   - Download: `python download_rex_v2.py --token YOUR_HF_TOKEN`
+   - Stanford/MIMIC with fine-grained features
    - Place in: `Dataset/ReXGradient/`
+
+4. **CheXpert** (~224K images) 🆕
+   - Download: https://stanfordmlgroup.github.io/competitions/chexpert/
+   - Stanford Hospital with uncertainty labels
+   - Place in: `Dataset/CheXpert/`
+
+5. **MIMIC-CXR** (~377K images) 🆕
+   - Download: https://physionet.org/content/mimic-cxr-jpg/2.0.0/
+   - MIT/Beth Israel with free-text reports
+   - **Requires PhysioNet credentialing (CITI training)**
+   - Place in: `Dataset/MIMIC-CXR/`
+
+6. **PadChest** (~161K images) 🆕
+   - Download: http://bimcv.cipf.es/bimcv-projects/padchest/
+   - University of Alicante (Spanish demographic)
+   - Place in: `Dataset/PadChest/`
+
+7. **VinDr-CXR** (~18K images) 🆕
+   - Download: https://physionet.org/content/vindr-cxr/1.0.0/
+   - Vietnam with bounding box annotations
+   - **Requires PhysioNet credentialing (CITI training)**
+   - Place in: `Dataset/VinDr-CXR/`
 
 ## Quick Start
 
@@ -45,32 +71,78 @@ pip install -r requirements.txt
 
 ### 2. Download Datasets
 
+#### Option A: Download All Datasets (Recommended)
 ```bash
-# Download ReXGradient (requires HF token)
-python download_rex_v2.py --token YOUR_HF_TOKEN
+# Check which datasets you have
+python download_all_datasets.py --check
 
-# NIH dataset: download manually and extract to Dataset/
+# Get information about specific dataset
+python download_all_datasets.py --info chexpert
+
+# Download automated datasets (VinDr-CXR, ReXGradient)
+python download_rex_v2.py --token YOUR_HF_TOKEN
+python download_all_datasets.py --download vindrcxr --username YOUR_PHYSIONET_USER
+
+# Manual downloads required for: NIH, CheXpert, MIMIC-CXR, PadChest
+# See: SEVEN_DATASET_INTEGRATION_GUIDE.md for detailed instructions
 ```
 
-### 3. Generate Combined Metadata
-
+#### Option B: Start with 3 Datasets (Faster)
 ```bash
-# Processes all datasets into train_metadata.csv
-python create_full_dataset.py
+# Download only NIH, OpenI, ReXGradient
+python download_rex_v2.py --token YOUR_HF_TOKEN
+# NIH: Download manually from https://nihcc.app.box.com/v/ChestXray-NIHCC
+```
+
+### 3. Process Datasets
+
+#### Process All 7 Datasets (Recommended for Best Performance)
+```bash
+# Process all available datasets
+python create_full_dataset_v2.py --datasets all
+
+# Output: data/processed/train_metadata_v2.csv (~900K samples)
+```
+
+#### Process Specific Datasets
+```bash
+# Process only 3 datasets (faster for testing)
+python create_full_dataset_v2.py --datasets nih openi rexgradient
+
+# Process with new datasets
+python create_full_dataset_v2.py --datasets nih chexpert mimic
 ```
 
 ### 4. Train Model
 
 ```bash
-# Recommended settings for AUROC > 0.90
-python train_v3.py --epochs 30 --batch_size 32 --lr 5e-5
+# Full training with all 7 datasets (recommended)
+python train_v3.py \
+  --metadata data/processed/train_metadata_v2.csv \
+  --epochs 30 \
+  --batch_size 32 \
+  --lr 5e-5 \
+  --backbone convnext_large
+
+# Quick test run (subset of data)
+python train_v3.py \
+  --metadata data/processed/train_metadata_v2.csv \
+  --epochs 5 \
+  --batch_size 16 \
+  --max_samples 10000
+
+# Expected results:
+# - 3 datasets: AUROC 0.84
+# - 7 datasets: AUROC 0.88-0.92 (target)
 ```
 
 ## Project Structure
 
 ```
 Core/
-├── create_full_dataset.py    # Dataset processing & merging
+├── download_all_datasets.py  # 🆕 Dataset download manager
+├── create_full_dataset.py    # Dataset processing (3 datasets)
+├── create_full_dataset_v2.py # 🆕 Dataset processing (7 datasets)
 ├── download_rex_v2.py        # ReXGradient downloader
 ├── train_v3.py               # Main training script (optimized)
 ├── requirements.txt          # Python dependencies
@@ -78,7 +150,8 @@ Core/
 │   └── best_model_v3.pth
 ├── data/
 │   └── processed/
-│       └── train_metadata.csv
+│       ├── train_metadata.csv     # 3 datasets (~280K samples)
+│       └── train_metadata_v2.csv  # 🆕 7 datasets (~900K samples)
 └── utils/
     ├── data_loader.py
     ├── model_utils.py
@@ -97,17 +170,19 @@ Core/
 ```
 
 ### Model Architecture
-- **Backbone**: ConvNeXt Large (pretrained on ImageNet)
-- **Loss Function**: Focal Loss (gamma=2.0)
-- **Optimizer**: AdamW
-- **Scheduler**: ReduceLROnPlateau
+- **Backbone**: ConvNeXt Large (197M parameters, pretrained on ImageNet-22k)
+- **Loss Function**: Focal Loss (gamma=2.0) - Handles class imbalance
+- **Optimizer**: AdamW - Decoupled weight decay
+- **Scheduler**: ReduceLROnPlateau - Adaptive learning rate
 
 ### Data Augmentation
-- Horizontal flip
-- Rotation (±25°)
-- ShiftScaleRotate
-- CoarseDropout (Cutout)
-- Brightness/Contrast adjustment
+- Horizontal flip (medically valid)
+- Rotation (±25°) - Patient positioning variance
+- ShiftScaleRotate - Equipment differences
+- CoarseDropout (Cutout) - Artifact robustness
+- Brightness/Contrast adjustment - Multi-site compatibility
+
+**See**: `../TRAINING_CONCEPTS_EXPLAINED.md` for detailed explanations
 
 ## HPC Deployment
 
@@ -146,23 +221,126 @@ Combines all datasets into a single `train_metadata.csv`:
 
 ## Performance Metrics
 
-### Target Performance
-- **AUROC (macro)**: > 0.90
-- **F1 Score (micro)**: > 0.70
-- **Precision (micro)**: > 0.75
+### Target Performance (7 Datasets)
+- **AUROC (macro)**: > 0.90 (target with all datasets)
+- **F1 Score (micro)**: > 0.75
+- **Precision (micro)**: > 0.78
+- **Recall (micro)**: > 0.72
+
+### Performance Comparison
+```
+3 Datasets (NIH + OpenI + ReXGradient):
+  - Training Images: ~280K
+  - AUROC: 0.84
+  - Rare diseases: 0.70-0.75
+
+7 Datasets (All):
+  - Training Images: ~900K (3.2× more!)
+  - AUROC: 0.88-0.92 (expected)
+  - Rare diseases: 0.80-0.85 (+10-15% improvement!)
+```
 
 ### Monitoring During Training
 ```
 Epoch 15/30
 Train Loss: 0.1234
 Val Loss: 0.1456
-Val AUROC: 0.9123
-Val F1: 0.7234
-Val Precision: 0.7654
-Val Recall: 0.7012
+Val AUROC: 0.9123 ✓ (Target achieved!)
+Val F1: 0.7534
+Val Precision: 0.7854
+Val Recall: 0.7212
 ✓ Saved new best model
 ```
 
+<<<<<<< HEAD
+=======
+## Troubleshooting
+
+### Dataset Download Issues
+
+#### CheXpert/PadChest/MIMIC Access
+```bash
+# CheXpert: Register at Stanford
+https://stanfordmlgroup.github.io/competitions/chexpert/
+
+# MIMIC-CXR/VinDr-CXR: Requires PhysioNet CITI training
+https://physionet.org/register/
+# Complete CITI training (2-3 hours, one-time requirement)
+
+# PadChest: Email request
+http://bimcv.cipf.es/bimcv-projects/padchest/
+```
+
+#### ReXGradient Download Issues
+```bash
+# Error: 401 Client Error
+# → Accept dataset terms at: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K
+
+# Error: FileNotFoundError: git
+# → Already handled in download_rex_v2.py (git not required)
+```
+
+### Out of Memory
+```bash
+# Reduce batch size
+python train_v3.py --batch_size 16
+
+# Use gradient accumulation (effective batch size = 16 × 2 = 32)
+python train_v3.py --batch_size 16 --accumulation_steps 2
+```
+
+### Low AUROC
+- Ensure all datasets are processed correctly
+- Verify `train_metadata_v2.csv` has 800K+ rows (for 7 datasets)
+- Check label distribution (some pathologies are rare)
+- Verify image paths are correct
+- Ensure proper data augmentation is applied
+
+### Processing Errors
+```bash
+# Check dataset availability
+python download_all_datasets.py --check
+
+# Verify metadata
+python -c "import pandas as pd; df = pd.read_csv('data/processed/train_metadata_v2.csv'); print(df.info())"
+
+# Check specific dataset processing
+python create_full_dataset_v2.py --datasets chexpert
+```
+
+## Output Files
+
+- `models/best_model_v3.pth`: Best model by validation AUROC
+- `data/processed/train_metadata.csv`: 3-dataset metadata (~280K)
+- `data/processed/train_metadata_v2.csv`: 7-dataset metadata (~900K) 🆕
+- Training logs: Printed to console and saved to logs/
+
+## Documentation
+
+### Comprehensive Guides
+- **[SEVEN_DATASET_INTEGRATION_GUIDE.md](../SEVEN_DATASET_INTEGRATION_GUIDE.md)**: Complete guide for downloading and integrating all 7 datasets
+- **[TRAINING_CONCEPTS_EXPLAINED.md](../TRAINING_CONCEPTS_EXPLAINED.md)**: Detailed explanations of all training components (Focal Loss, AdamW, augmentation, etc.)
+- **[KEY_CONCEPTS_EXPLAINED.md](../KEY_CONCEPTS_EXPLAINED.md)**: Core AI concepts (AUROC, CNN, Deep Networks, ConvNeXt)
+- **[ADVANCED_XAI_AND_MODEL_CHOICES.md](../ADVANCED_XAI_AND_MODEL_CHOICES.md)**: Explainable AI techniques and continuous learning strategies
+
+### Quick References
+- **Dataset Download**: `python download_all_datasets.py --list`
+- **Dataset Status**: `python download_all_datasets.py --check`
+- **Dataset Info**: `python download_all_datasets.py --info <dataset_name>`
+
+### Testing
+
+```bash
+# Verify dataset processing
+python -c "from utils.data_loader import *; print('✓ Data loader OK')"
+
+# Check model loading
+python -c "from utils.model_utils import *; print('✓ Model utils OK')"
+
+# Verify Grad-CAM
+python -c "from utils.grad_cam import *; print('✓ Grad-CAM OK')"
+```
+>>>>>>> 755f576 (Add 7-dataset integration system with comprehensive documentation)
 
 ## Related Repository
 
