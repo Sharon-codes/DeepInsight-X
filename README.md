@@ -253,60 +253,6 @@ Val Recall: 0.7212
 ```
 
 <<<<<<< HEAD
-=======
-## Troubleshooting
-
-### Dataset Download Issues
-
-#### CheXpert/PadChest/MIMIC Access
-```bash
-# CheXpert: Register at Stanford
-https://stanfordmlgroup.github.io/competitions/chexpert/
-
-# MIMIC-CXR/VinDr-CXR: Requires PhysioNet CITI training
-https://physionet.org/register/
-# Complete CITI training (2-3 hours, one-time requirement)
-
-# PadChest: Email request
-http://bimcv.cipf.es/bimcv-projects/padchest/
-```
-
-#### ReXGradient Download Issues
-```bash
-# Error: 401 Client Error
-# → Accept dataset terms at: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K
-
-# Error: FileNotFoundError: git
-# → Already handled in download_rex_v2.py (git not required)
-```
-
-### Out of Memory
-```bash
-# Reduce batch size
-python train_v3.py --batch_size 16
-
-# Use gradient accumulation (effective batch size = 16 × 2 = 32)
-python train_v3.py --batch_size 16 --accumulation_steps 2
-```
-
-### Low AUROC
-- Ensure all datasets are processed correctly
-- Verify `train_metadata_v2.csv` has 800K+ rows (for 7 datasets)
-- Check label distribution (some pathologies are rare)
-- Verify image paths are correct
-- Ensure proper data augmentation is applied
-
-### Processing Errors
-```bash
-# Check dataset availability
-python download_all_datasets.py --check
-
-# Verify metadata
-python -c "import pandas as pd; df = pd.read_csv('data/processed/train_metadata_v2.csv'); print(df.info())"
-
-# Check specific dataset processing
-python create_full_dataset_v2.py --datasets chexpert
-```
 
 ## Output Files
 
@@ -316,12 +262,6 @@ python create_full_dataset_v2.py --datasets chexpert
 - Training logs: Printed to console and saved to logs/
 
 ## Documentation
-
-### Comprehensive Guides
-- **[SEVEN_DATASET_INTEGRATION_GUIDE.md](../SEVEN_DATASET_INTEGRATION_GUIDE.md)**: Complete guide for downloading and integrating all 7 datasets
-- **[TRAINING_CONCEPTS_EXPLAINED.md](../TRAINING_CONCEPTS_EXPLAINED.md)**: Detailed explanations of all training components (Focal Loss, AdamW, augmentation, etc.)
-- **[KEY_CONCEPTS_EXPLAINED.md](../KEY_CONCEPTS_EXPLAINED.md)**: Core AI concepts (AUROC, CNN, Deep Networks, ConvNeXt)
-- **[ADVANCED_XAI_AND_MODEL_CHOICES.md](../ADVANCED_XAI_AND_MODEL_CHOICES.md)**: Explainable AI techniques and continuous learning strategies
 
 ### Quick References
 - **Dataset Download**: `python download_all_datasets.py --list`
@@ -340,7 +280,6 @@ python -c "from utils.model_utils import *; print('✓ Model utils OK')"
 # Verify Grad-CAM
 python -c "from utils.grad_cam import *; print('✓ Grad-CAM OK')"
 ```
->>>>>>> 755f576 (Add 7-dataset integration system with comprehensive documentation)
 
 ## Related Repository
 
