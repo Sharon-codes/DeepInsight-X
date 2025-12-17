@@ -163,43 +163,6 @@ Val Recall: 0.7012
 ✓ Saved new best model
 ```
 
-## Troubleshooting
-
-### ReXGradient Download Issues
-```bash
-# Error: 401 Client Error
-# → Accept dataset terms at: https://huggingface.co/datasets/rajpurkarlab/ReXGradient-160K
-
-# Error: FileNotFoundError: git
-# → Already handled in download_rex_v2.py (git not required)
-```
-
-### Out of Memory
-```bash
-# Reduce batch size
-python train_v3.py --batch_size 16
-```
-
-### Low AUROC
-- Ensure all datasets are processed correctly
-- Verify `train_metadata.csv` has 230K+ rows
-- Check label distribution (some pathologies are rare)
-
-## Output Files
-
-- `models/best_model_v3.pth`: Best model by validation AUROC
-- `data/processed/train_metadata.csv`: Combined dataset metadata
-- Training logs: Printed to console
-
-## Testing
-
-```bash
-# Verify dataset processing
-python verify_metadata.py
-
-# Check data loader
-python -c "from utils.data_loader import *; print('OK')"
-```
 
 ## Related Repository
 
@@ -207,8 +170,8 @@ python -c "from utils.data_loader import *; print('OK')"
 
 ## Contributors
 
-- Nikita Lotlikar - Research & ML
-- Sharon Melhi - Research & ML
+- Nikita Lotlikar - Research & Bio Technology
+- Sharon Melhi - Research & AI/ML
 
 ## Citation
 
